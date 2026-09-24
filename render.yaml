@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: chaincatch-backend
+    env: python
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: ETHERSCAN_API_KEY
+        value: "" # Fill this in the Render dashboard
+      - key: TRONSCAN_API_KEY
+        value: "" # Optional, fill in Render dashboard

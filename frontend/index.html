@@ -158,7 +158,9 @@
 
 <script type="text/plain" id="app-source">
 const {useState, useEffect, useRef, useCallback} = React;
-const API_BASE = "http://127.0.0.1:8000";
+const isLocal = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost" || window.location.protocol === "file:";
+// TODO: Replace with your actual deployed Render URL once we have it
+const API_BASE = isLocal ? "http://127.0.0.1:8000" : "https://YOUR-RENDER-BACKEND-URL.onrender.com";
 
 const LOADING_STEPS = [
   "Fetching transactions...",
