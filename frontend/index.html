@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>ChainCatch — Blockchain Fraud Tracing (SIH 2026 · Team CryptoKnights)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#111827; --panel2:#0f1521; --border:#1f2937;
+    --text:#e5e7eb; --muted:#8b95a7; --accent:#22d3ee; --accent2:#38bdf8;
+    --danger:#ef4444; --warn:#f59e0b; --good:#22c55e; --gold:#eab308; --purple:#a78bfa;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
+  .app{min-height:100vh;display:flex;flex-direction:column;}
+
+  /* ---------- top bar ---------- */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 22px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#0d1420,#0a0e14);}
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .mark{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-weight:800;color:#0a0e14;}
+  .brand h1{font-size:17px;margin:0;letter-spacing:0.3px;}
+  .brand .tag{font-size:11px;color:var(--muted);}
+  .modebadge{font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);color:var(--muted);display:flex;align-items:center;gap:6px;}
+  .modebadge .dot{width:7px;height:7px;border-radius:50%;background:var(--good);box-shadow:0 0 6px var(--good);}
+  .modebadge.live .dot{background:var(--warn);box-shadow:0 0 6px var(--warn);}
+  .live-toggle{font-size:11px;color:var(--muted);border:1px dashed var(--border);padding:4px 10px;border-radius:20px;opacity:0.6;}
+
+  /* ---------- data-mode toggle ---------- */
+  .mode-toggle{display:inline-flex;border:1px solid var(--border);border-radius:20px;padding:3px;background:var(--panel);gap:2px;}
+  .mode-toggle button{border:none;background:transparent;color:var(--muted);font-size:11.5px;font-weight:700;padding:6px 14px;border-radius:16px;cursor:pointer;letter-spacing:0.4px;display:flex;align-items:center;gap:6px;}
+  .mode-toggle button .dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:0.4;}
+  .mode-toggle button.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04141a;}
+  .mode-toggle button.active .dot{opacity:1;}
+
+  .live-form{display:flex;gap:10px;width:100%;max-width:640px;flex-wrap:wrap;}
+  .live-form select{background:var(--panel);border:1px solid var(--border);color:var(--text);padding:13px 12px;border-radius:10px;font-size:13px;}
+  .live-form input{flex:1;min-width:220px;}
+
+  .status-panel{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;margin-top:20px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 18px;max-width:640px;}
+  .status-item{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted);}
+  .status-item .sdot{width:8px;height:8px;border-radius:50%;}
+  .status-item .sdot.on{background:var(--good);box-shadow:0 0 5px var(--good);}
+  .status-item .sdot.off{background:var(--danger);box-shadow:0 0 5px var(--danger);}
+
+  .live-error{background:#2a1e0a;border:1px solid #8a5a12;color:#fcd34d;padding:16px 18px;border-radius:10px;margin-top:16px;max-width:640px;text-align:left;}
+  .live-error .head{font-weight:800;font-size:12.5px;letter-spacing:0.4px;color:#fbbf24;margin-bottom:4px;}
+  .live-error .reason{font-size:12.5px;color:#fde68a;margin-bottom:10px;}
+
+  .datasource-tag{font-size:10.5px;padding:2px 9px;border-radius:20px;border:1px solid var(--border);color:var(--muted);display:inline-flex;align-items:center;gap:5px;margin-top:4px;}
+  .datasource-tag.live{color:#86efac;border-color:#22c55e;}
+  .datasource-tag.cache{color:#93c5fd;border-color:#3b82f6;}
+  .datasource-tag.demo{color:var(--muted);}
+
+  /* ---------- landing ---------- */
+  .landing{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 16px;text-align:center;}
+  .landing h2{font-size:30px;margin:6px 0 4px;}
+  .landing p.sub{color:var(--muted);max-width:640px;margin:0 auto 26px;font-size:14px;line-height:1.6;}
+  .search-row{display:flex;gap:10px;width:100%;max-width:640px;}
+  .search-row input{flex:1;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:13px 16px;border-radius:10px;font-size:14px;font-family:monospace;}
+  .search-row input:focus{outline:none;border-color:var(--accent);}
+  .btn{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04141a;border:none;padding:13px 22px;border-radius:10px;font-weight:700;font-size:13.5px;cursor:pointer;white-space:nowrap;}
+  .btn:hover{filter:brightness(1.08);}
+  .btn.secondary{background:var(--panel);color:var(--text);border:1px solid var(--border);}
+  .btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .demo-cases{display:flex;gap:12px;margin-top:26px;flex-wrap:wrap;justify-content:center;max-width:760px;}
+  .demo-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px;text-align:left;cursor:pointer;width:230px;transition:0.15s;}
+  .demo-card:hover{border-color:var(--accent);transform:translateY(-2px);}
+  .demo-card .k{font-size:10.5px;color:var(--accent);font-weight:700;letter-spacing:0.5px;}
+  .demo-card .t{font-size:13px;margin:4px 0;font-weight:600;}
+  .demo-card .w{font-size:10.5px;color:var(--muted);font-family:monospace;word-break:break-all;}
+  .ps-footer{margin-top:34px;font-size:11px;color:var(--muted);}
+  .error-banner{background:#3a1414;border:1px solid #7a2e2e;color:#fca5a5;padding:10px 16px;border-radius:8px;margin-top:16px;font-size:13px;max-width:640px;}
+
+  /* ---------- loading ---------- */
+  .loading{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;}
+  .spinner{width:56px;height:56px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--accent);animation:spin 0.9s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loading-steps{width:380px;}
+  .loading-step{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px;color:var(--muted);opacity:0.35;transition:0.2s;}
+  .loading-step.active{opacity:1;color:var(--text);}
+  .loading-step.done{opacity:0.7;color:var(--good);}
+  .loading-step .ck{width:16px;text-align:center;}
+
+  /* ---------- dashboard ---------- */
+  .dash{flex:1;display:flex;flex-direction:column;padding:16px 20px 30px;gap:14px;}
+  .dash-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;}
+  .dash-head .wallet{font-family:monospace;font-size:14px;color:var(--accent);word-break:break-all;}
+  .dash-head .meta{font-size:11.5px;color:var(--muted);margin-top:3px;}
+  .caseid{font-size:11px;color:var(--muted);}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}
+  .stat{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 14px;}
+  .stat .v{font-size:20px;font-weight:800;}
+  .stat .l{font-size:11px;color:var(--muted);margin-top:2px;}
+  .grid{display:grid;grid-template-columns:1.5fr 1fr;gap:14px;align-items:start;}
+  @media(max-width:980px){.grid{grid-template-columns:1fr;}}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;}
+  .panel h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);display:flex;align-items:center;justify-content:space-between;}
+  .right-col{display:flex;flex-direction:column;gap:14px;}
+
+  /* graph */
+  .graph-wrap{position:relative;overflow:hidden;border-radius:10px;background:radial-gradient(circle at 30% 20%,#0d1622,#080b10);border:1px solid var(--border);}
+  .graph-hint{position:absolute;bottom:8px;left:10px;font-size:10.5px;color:var(--muted);background:rgba(0,0,0,0.4);padding:3px 8px;border-radius:6px;}
+  .legend{position:absolute;top:8px;right:10px;background:rgba(10,14,20,0.85);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:10.5px;color:var(--muted);display:flex;flex-direction:column;gap:4px;}
+  .legend .row{display:flex;align-items:center;gap:6px;}
+  .legend .sw{width:10px;height:10px;border-radius:3px;}
+
+  /* risk */
+  .risk-score-row{display:flex;align-items:baseline;gap:10px;}
+  .risk-score{font-size:38px;font-weight:800;}
+  .risk-level{font-size:12px;font-weight:800;padding:3px 10px;border-radius:6px;}
+  .risk-level.HIGH{background:#3a1414;color:#fca5a5;}
+  .risk-level.MEDIUM{background:#3a2c10;color:#fcd34d;}
+  .risk-level.LOW{background:#0f3a1c;color:#86efac;}
+  .risk-conf{font-size:11.5px;color:var(--muted);}
+  .risk-disclaimer{font-size:10.5px;color:var(--muted);border-left:2px solid var(--warn);padding-left:8px;margin:8px 0;line-height:1.5;}
+  .bar-row{display:flex;align-items:center;gap:8px;font-size:11px;margin:5px 0;}
+  .bar-row .label{width:130px;color:var(--muted);flex-shrink:0;}
+  .bar-track{flex:1;height:7px;background:#1a2230;border-radius:4px;overflow:hidden;}
+  .bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--purple));}
+  .bar-row .val{width:34px;text-align:right;color:var(--muted);}
+  .reasons{margin:10px 0 0;padding:0;list-style:none;font-size:12px;}
+  .reasons li{padding:4px 0;color:#d1d5db;}
+  .reasons li:before{content:"✓ ";color:var(--good);font-weight:800;}
+  .expand-btn{font-size:11px;color:var(--accent);cursor:pointer;background:none;border:none;padding:0;}
+
+  /* clusters/vasp */
+  .cluster-card{border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:var(--panel2);}
+  .cluster-card .top{display:flex;justify-content:space-between;align-items:center;}
+  .badge{font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;}
+  .badge.high{background:#3a1414;color:#fca5a5;}
+  .badge.medium{background:#3a2c10;color:#fcd34d;}
+  .wchip{display:inline-block;font-family:monospace;font-size:10.5px;background:#0e1622;border:1px solid var(--border);padding:1px 6px;border-radius:5px;margin:3px 4px 0 0;}
+  .charlist{margin:6px 0 0;padding-left:16px;font-size:11.5px;color:var(--muted);}
+  .vasp-box .name{font-size:15px;font-weight:800;color:var(--gold);}
+  .vasp-box .cls{font-size:11.5px;color:var(--muted);margin-bottom:6px;}
+  .dataset-note{font-size:10px;color:var(--muted);font-style:italic;margin-top:8px;}
+  .crosschain-flow{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;margin-bottom:8px;flex-wrap:wrap;}
+  .chip-chain{padding:4px 10px;border-radius:6px;background:#0e1622;border:1px solid var(--border);}
+
+  /* detail drawer */
+  .detail-drawer{position:fixed;right:0;top:0;bottom:0;width:320px;background:#0c1119;border-left:1px solid var(--border);padding:18px;z-index:50;box-shadow:-8px 0 30px rgba(0,0,0,0.4);overflow-y:auto;}
+  .detail-drawer h4{margin-top:0;font-size:13px;color:var(--muted);text-transform:uppercase;}
+  .kv{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:6px 0;border-bottom:1px solid #182233;}
+  .kv .k{color:var(--muted);}
+  .kv .v{font-family:monospace;text-align:right;word-break:break-all;}
+  .close-x{position:absolute;top:12px;right:14px;cursor:pointer;color:var(--muted);font-size:18px;background:none;border:none;}
+
+  .footer-actions{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0e1622;border:1px solid var(--good);color:#86efac;padding:9px 18px;border-radius:8px;font-size:12.5px;z-index:100;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="./vendor/react.production.min.js"></script>
+<script src="./vendor/react-dom.production.min.js"></script>
+<script src="./vendor/babel.min.js"></script>
+
+<script type="text/plain" id="app-source">
+const {useState, useEffect, useRef, useCallback} = React;
+const API_BASE = "http://127.0.0.1:8000";
+
+const LOADING_STEPS = [
+  "Fetching transactions...",
+  "Building transaction graph...",
+  "Tracing fund flow...",
+  "Detecting wallet clusters...",
+  "Correlating cross-chain activity...",
+  "Matching known VASP addresses...",
+  "Calculating risk score...",
+];
+
+const NODE_STYLE = {
+  suspect: {fill:"#f97316", ring:"#fdba74", r:24, label:"Suspect wallet"},
+  wallet:  {fill:"#22d3ee", ring:"#0891b2", r:19, label:"Wallet"},
+  vasp:    {fill:"#eab308", ring:"#a16207", r:26, label:"Likely VASP / exchange"},
+  bridge:  {fill:"#3b82f6", ring:"#1d4ed8", r:20, label:"Cross-chain bridge"},
+  contract:{fill:"#94a3b8", ring:"#475569", r:18, label:"Smart contract"},
+};
+const CLUSTER_COLORS = ["#a78bfa","#f472b6","#34d399","#fbbf24","#60a5fa"];
+function clusterColor(id){
+  if(!id) return null;
+  let h=0; for(const c of id) h = (h*31+c.charCodeAt(0))>>>0;
+  return CLUSTER_COLORS[h % CLUSTER_COLORS.length];
+}
+
+function fmtTime(ts){
+  try{ return new Date(ts).toLocaleString(); }catch(e){ return ts; }
+}
+
+// ---------------------------------------------------------------- Graph ----
+function TransactionGraph({nodes, edges, onSelectNode, onSelectEdge, selected}){
+  const [view, setView] = useState({scale:1, tx:0, ty:0});
+  const dragRef = useRef(null);
+  const svgRef = useRef(null);
+
+  const xs = nodes.map(n=>n.x), ys = nodes.map(n=>n.y);
+  const minX = Math.min(...xs)-60, maxX = Math.max(...xs)+60;
+  const minY = Math.min(...ys)-60, maxY = Math.max(...ys)+60;
+  const vbW = Math.max(600, maxX-minX), vbH = Math.max(360, maxY-minY);
+
+  const onWheel = (e)=>{
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.08 : 0.08;
+    setView(v=>({...v, scale: Math.min(2.4, Math.max(0.5, v.scale+delta))}));
+  };
+  const onMouseDown = (e)=>{ dragRef.current = {x:e.clientX, y:e.clientY, tx:view.tx, ty:view.ty}; };
+  const onMouseMove = (e)=>{
+    if(!dragRef.current) return;
+    const dx = e.clientX - dragRef.current.x, dy = e.clientY - dragRef.current.y;
+    setView(v=>({...v, tx:dragRef.current.tx+dx, ty:dragRef.current.ty+dy}));
+  };
+  const onMouseUp = ()=>{ dragRef.current=null; };
+  const resetView = ()=> setView({scale:1, tx:0, ty:0});
+
+  const nodeById = Object.fromEntries(nodes.map(n=>[n.id,n]));
+
+  return (
+    <div className="graph-wrap" style={{height:420}}
+      onWheel={onWheel} onMouseDown={onMouseDown} onMouseMove={onMouseMove}
+      onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
+      <svg ref={svgRef} width="100%" height="100%" viewBox={`${minX} ${minY} ${vbW} ${vbH}`}>
+        <defs>
+          <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 Z" fill="#64748b" />
+          </marker>
+          <marker id="arrowHi" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 Z" fill="#ef4444" />
+          </marker>
+        </defs>
+        <g transform={`translate(${view.tx} ${view.ty}) scale(${view.scale})`}>
+          {edges.map(e=>{
+            const s = nodeById[e.source], t = nodeById[e.target];
+            if(!s||!t) return null;
+            const highRisk = (t.risk==="high");
+            const isSel = selected && selected.kind==="edge" && selected.data.id===e.id;
+            const mx = (s.x+t.x)/2, my=(s.y+t.y)/2;
+            return (
+              <g key={e.id} style={{cursor:"pointer"}} onClick={(ev)=>{ev.stopPropagation(); onSelectEdge(e);}}>
+                <line x1={s.x} y1={s.y} x2={t.x} y2={t.y}
+                  stroke={isSel ? "#ef4444" : (highRisk ? "#f59e0b" : "#475569")}
+                  strokeWidth={isSel?3:1.6}
+                  markerEnd={highRisk? "url(#arrowHi)":"url(#arrow)"} />
+                <rect x={mx-34} y={my-10} width={68} height={16} rx={4} fill="#0a0e14" opacity="0.85" />
+                <text x={mx} y={my+2} textAnchor="middle" fontSize="9" fill="#cbd5e1">{e.amount} {e.asset}</text>
+              </g>
+            );
+          })}
+          {nodes.map(n=>{
+            const style = NODE_STYLE[n.type] || NODE_STYLE.wallet;
+            const cc = clusterColor(n.cluster);
+            const isSel = selected && selected.kind==="node" && selected.data.id===n.id;
+            const highRisk = n.risk === "high";
+            return (
+              <g key={n.id} transform={`translate(${n.x} ${n.y})`} style={{cursor:"pointer"}}
+                 onClick={(ev)=>{ev.stopPropagation(); onSelectNode(n);}}>
+                {cc && <circle r={style.r+7} fill="none" stroke={cc} strokeWidth={2.5} strokeDasharray="3,3" />}
+                <circle r={style.r} fill={style.fill}
+                  stroke={isSel ? "#fff" : (highRisk ? "#ef4444" : style.ring)}
+                  strokeWidth={isSel?3:(highRisk?3:2)} />
+                {n.type==="vasp" && <text y={5} textAnchor="middle" fontSize="13" fill="#1c1200">🏦</text>}
+                {n.type==="bridge" && <text y={5} textAnchor="middle" fontSize="12" fill="#fff">⇄</text>}
+                {n.type==="suspect" && <text y={5} textAnchor="middle" fontSize="13" fill="#3a1400">⚠</text>}
+                <text y={style.r+16} textAnchor="middle" fontSize="10.5" fill="#e5e7eb" fontWeight="600">{n.label}</text>
+                <text y={style.r+28} textAnchor="middle" fontSize="8.5" fill="#8b95a7">{n.chain}</text>
+              </g>
+            );
+          })}
+        </g>
+      </svg>
+      <div className="legend">
+        <div className="row"><span className="sw" style={{background:NODE_STYLE.suspect.fill}}></span>Suspect wallet</div>
+        <div className="row"><span className="sw" style={{background:NODE_STYLE.wallet.fill}}></span>Wallet</div>
+        <div className="row"><span className="sw" style={{background:NODE_STYLE.bridge.fill}}></span>Cross-chain bridge</div>
+        <div className="row"><span className="sw" style={{background:NODE_STYLE.vasp.fill}}></span>Likely VASP</div>
+        <div className="row"><span className="sw" style={{background:"#ef4444",borderRadius:"50%"}}></span>High risk</div>
+      </div>
+      <div className="graph-hint">Scroll to zoom · drag to pan · click a node or transaction</div>
+      <button className="btn secondary" style={{position:"absolute",top:8,left:8,padding:"4px 10px",fontSize:11}} onClick={resetView}>Reset view</button>
+    </div>
+  );
+}
+
+// -------------------------------------------------------------- Detail -----
+function DetailDrawer({selected, onClose, analysis}){
+  if(!selected) return null;
+  const {kind, data} = selected;
+  const dataSourceLabel =
+    analysis && analysis.data_source==="live" ? `LIVE — ${analysis.adapter==="etherscan"?"Etherscan":"TRONSCAN"}` :
+    analysis && analysis.data_source==="cache" ? "CACHED LIVE DATA" :
+    analysis && analysis.data_source==="synthetic_offline" ? "SYNTHETIC (offline)" :
+    "DEMO DATASET";
+  return (
+    <div className="detail-drawer">
+      <button className="close-x" onClick={onClose}>✕</button>
+      {kind==="node" ? (
+        <>
+          <h4>Wallet / Node Details</h4>
+          <div className="kv"><span className="k">Label</span><span className="v">{data.label}</span></div>
+          <div className="kv"><span className="k">Address</span><span className="v">{data.address}</span></div>
+          <div className="kv"><span className="k">Type</span><span className="v">{data.type}</span></div>
+          <div className="kv"><span className="k">Chain</span><span className="v">{data.chain}</span></div>
+          {data.cluster && <div className="kv"><span className="k">Cluster</span><span className="v">{data.cluster}</span></div>}
+          {data.risk && <div className="kv"><span className="k">Risk flag</span><span className="v">{data.risk.toUpperCase()}</span></div>}
+        </>
+      ) : (
+        <>
+          <h4>Transaction Details</h4>
+          <div className="kv"><span className="k">Tx Hash</span><span className="v">{data.tx_hash}</span></div>
+          <div className="kv"><span className="k">From</span><span className="v">{data.source_label}</span></div>
+          <div className="kv"><span className="k">To</span><span className="v">{data.target_label}</span></div>
+          <div className="kv"><span className="k">Amount</span><span className="v">{data.amount} {data.asset}</span></div>
+          <div className="kv"><span className="k">Timestamp</span><span className="v">{fmtTime(data.timestamp)}</span></div>
+          <div className="kv"><span className="k">Block</span><span className="v">{data.block}</span></div>
+          <div className="kv"><span className="k">Chain</span><span className="v">{data.chain}</span></div>
+          <div className="kv"><span className="k">Data Source</span><span className="v">{dataSourceLabel}</span></div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// -------------------------------------------------------------- App --------
+function App(){
+  const [stage, setStage] = useState("landing"); // landing | loading | dashboard
+  const [walletInput, setWalletInput] = useState("");
+  const [demoCases, setDemoCases] = useState([]);
+  const [analysis, setAnalysis] = useState(null);
+  const [error, setError] = useState(null);
+  const [loadingIdx, setLoadingIdx] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [expandRisk, setExpandRisk] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  // ---- DATA MODE (DEMO / LIVE) ----
+  const [dataMode, setDataMode] = useState("demo");
+  const [liveChain, setLiveChain] = useState("ethereum");
+  const [liveWalletInput, setLiveWalletInput] = useState("");
+  const [apiStatus, setApiStatus] = useState(null);
+  const [liveError, setLiveError] = useState(null); // {reason, code}
+
+  useEffect(()=>{
+    fetch(`${API_BASE}/api/demo-cases`).then(r=>r.json()).then(d=>setDemoCases(d.cases||[])).catch(()=>{});
+  },[]);
+
+  useEffect(()=>{
+    fetch(`${API_BASE}/api/status`).then(r=>r.json()).then(setApiStatus).catch(()=>{});
+  },[]);
+
+  const runAnalysis = useCallback((wallet, mode, chain)=>{
+    setError(null);
+    setLiveError(null);
+    setStage("loading");
+    setLoadingIdx(0);
+    setSelected(null);
+    setExpandRisk(false);
+
+    let stepTimer = setInterval(()=>{
+      setLoadingIdx(i => Math.min(i+1, LOADING_STEPS.length-1));
+    }, 320);
+
+    let url = `${API_BASE}/api/analyze?wallet=${encodeURIComponent(wallet)}`;
+    if(mode==="live") url += `&mode=live&chain=${encodeURIComponent(chain)}`;
+
+    const fetchPromise = fetch(url).then(async r=>{
+      if(!r.ok){
+        let detail = null;
+        try{ detail = (await r.json()).detail; }catch(e){}
+        const err = new Error(detail && detail.reason ? detail.reason : ("Analysis failed ("+r.status+")"));
+        err.liveDetail = detail;
+        throw err;
+      }
+      return r.json();
+    });
+    const minDelay = new Promise(res=>setTimeout(res, LOADING_STEPS.length*320+250));
+
+    Promise.all([fetchPromise, minDelay]).then(([data])=>{
+      clearInterval(stepTimer);
+      setAnalysis(data);
+      setStage("dashboard");
+    }).catch(err=>{
+      clearInterval(stepTimer);
+      setStage("landing");
+      if(mode==="live"){
+        setLiveError(err.liveDetail || {reason: err.message, code:"unreachable"});
+      }else{
+        setError("Could not reach ChainCatch backend at "+API_BASE+". Is `uvicorn app.main:app` running? ("+err.message+")");
+      }
+    });
+  },[]);
+
+  const downloadReport = ()=>{
+    if(!analysis) return;
+    fetch(`${API_BASE}/api/report/${analysis.case_id}`).then(r=>r.blob()).then(blob=>{
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `ChainCatch_${analysis.case_id}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      setToast("Investigation report downloaded.");
+      setTimeout(()=>setToast(null), 2500);
+    }).catch(()=>{
+      setToast("Could not generate report — check backend is running.");
+      setTimeout(()=>setToast(null), 3000);
+    });
+  };
+
+  return (
+    <div className="app">
+      <div className="topbar">
+        <div className="brand">
+          <div className="mark">CC</div>
+          <div>
+            <h1>ChainCatch</h1>
+            <div className="tag">Accessible Crypto Tracing & VASP Identification · SIH26183 · Team CryptoKnights</div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:12,alignItems:"center"}}>
+          <div className="mode-toggle" role="tablist" aria-label="Data mode">
+            <button className={dataMode==="demo"?"active":""} onClick={()=>{setDataMode("demo"); setError(null); setLiveError(null);}}>
+              <span className="dot"></span>DEMO
+            </button>
+            <button className={dataMode==="live"?"active":""} onClick={()=>{setDataMode("live"); setError(null); setLiveError(null);}}>
+              <span className="dot"></span>LIVE
+            </button>
+          </div>
+          <div className={"modebadge "+(dataMode==="live"?"live":"")}>
+            <span className="dot"></span>
+            {dataMode==="demo" ? "DEMO MODE — pre-indexed dataset, no live API calls" : "LIVE MODE — real Etherscan / TRONSCAN data"}
+          </div>
+          {stage==="dashboard" && <button className="btn secondary" onClick={()=>{setStage("landing"); setAnalysis(null);}}>New Analysis</button>}
+        </div>
+      </div>
+
+      {stage==="landing" && dataMode==="demo" && (
+        <div className="landing">
+          <h2>Where did the money go?</h2>
+          <p className="sub">
+            Enter a victim-reported suspect wallet address. ChainCatch automatically traces the
+            fund flow across hops, detects suspicious wallet clusters, correlates cross-chain
+            activity, identifies the likely VASP/exchange endpoint, and produces an explainable
+            risk score with a draft investigation report.
+          </p>
+          <div className="search-row">
+            <input
+              placeholder="Enter suspect wallet address, e.g. 0x7a3fdemo1suspectwallet0000000000000001"
+              value={walletInput}
+              onChange={e=>setWalletInput(e.target.value)}
+              onKeyDown={e=>{ if(e.key==="Enter" && walletInput.trim()) runAnalysis(walletInput.trim(), "demo"); }}
+            />
+            <button className="btn" disabled={!walletInput.trim()} onClick={()=>runAnalysis(walletInput.trim(), "demo")}>ANALYZE WALLET</button>
+          </div>
+          {error && <div className="error-banner">{error}</div>}
+
+          <div className="demo-cases">
+            {(demoCases.length ? demoCases : [
+              {case_key:"CASE-1-MULTIHOP", label:"Case 1 · Ethereum multi-hop → VASP", reported_wallet:"0x7a3fdemo1suspectwallet0000000000000001"},
+              {case_key:"CASE-2-CROSSCHAIN", label:"Case 2 · Ethereum → Bridge → TRON → VASP", reported_wallet:"0x9f1edemo2suspectwallet0000000000000002"},
+              {case_key:"CASE-3-CLUSTER", label:"Case 3 · High-risk wallet cluster", reported_wallet:"0x5c6edemo3suspectwallet0000000000000003"},
+            ]).map(c=>(
+              <div className="demo-card" key={c.case_key} onClick={()=>runAnalysis(c.reported_wallet, "demo")}>
+                <div className="k">DEMO CASE</div>
+                <div className="t">{c.label}</div>
+                <div className="w">{c.reported_wallet}</div>
+              </div>
+            ))}
+          </div>
+          <div className="ps-footer">Ministry of Home Affairs · Blockchain & Cybersecurity · Prototype uses a synthetic/pre-indexed dataset for reliable demonstration.</div>
+        </div>
+      )}
+
+      {stage==="landing" && dataMode==="live" && (
+        <div className="landing">
+          <h2>Trace a real wallet, live</h2>
+          <p className="sub">
+            LIVE MODE calls the real Etherscan / TRONSCAN APIs from the backend (never from the
+            browser) and runs the same bounded multi-hop tracing, clustering, VASP-matching and
+            explainable risk scoring on top of the on-chain data it fetches.
+          </p>
+          <div className="live-form">
+            <select value={liveChain} onChange={e=>setLiveChain(e.target.value)}>
+              <option value="ethereum">Ethereum</option>
+              <option value="tron">TRON</option>
+            </select>
+            <input
+              placeholder={liveChain==="ethereum" ? "0x… (42-char Ethereum address)" : "T… (34-char TRON address)"}
+              value={liveWalletInput}
+              onChange={e=>setLiveWalletInput(e.target.value)}
+              onKeyDown={e=>{ if(e.key==="Enter" && liveWalletInput.trim()) runAnalysis(liveWalletInput.trim(), "live", liveChain); }}
+            />
+            <button className="btn" disabled={!liveWalletInput.trim()} onClick={()=>runAnalysis(liveWalletInput.trim(), "live", liveChain)}>ANALYZE WALLET</button>
+          </div>
+
+          {liveError && (
+            <div className="live-error">
+              <div className="head">⚠ LIVE DATA UNAVAILABLE</div>
+              <div className="reason">Reason: {liveError.reason}</div>
+              <button className="btn secondary" onClick={()=>{ setDataMode("demo"); setLiveError(null); }}>Switch to Demo Case</button>
+            </div>
+          )}
+
+          {apiStatus && (
+            <div className="status-panel">
+              <div style={{width:"100%",fontSize:10,color:"var(--muted)",textTransform:"uppercase",letterSpacing:0.6,marginBottom:2}}>Blockchain API Status</div>
+              <div className="status-item"><span className={"sdot "+(apiStatus.ethereum.configured?"on":"off")}></span>Ethereum (Etherscan) — {apiStatus.ethereum.configured ? "API key configured" : "API key missing"}</div>
+              <div className="status-item"><span className={"sdot "+(apiStatus.tron.configured?"on":"off")}></span>TRON (TRONSCAN) — {apiStatus.tron.key_configured ? "API key configured" : "keyless (lower rate limit)"}</div>
+              <div className="status-item"><span className={"sdot "+(apiStatus.vasp_dataset.loaded?"on":"off")}></span>VASP Dataset — Loaded</div>
+              <div style={{width:"100%",fontSize:10,color:"var(--muted)",marginTop:4}}>
+                Limits: max {apiStatus.limits.max_hops} hops · max {apiStatus.limits.max_wallets} wallets ·
+                {" "}cache TTL {apiStatus.limits.cache_ttl_seconds}s
+              </div>
+            </div>
+          )}
+
+          <div className="ps-footer">
+            Real transactions only — the VASP registry above is still the synthetic demo dataset, so a
+            match against a real wallet is not expected. If LIVE MODE isn't reachable, switch back to DEMO MODE any time.
+          </div>
+        </div>
+      )}
+
+      {stage==="loading" && (
+        <div className="loading">
+          <div className="spinner"></div>
+          <div className="loading-steps">
+            {LOADING_STEPS.map((s,i)=>(
+              <div key={i} className={"loading-step "+(i<loadingIdx?"done":(i===loadingIdx?"active":""))}>
+                <span className="ck">{i<loadingIdx?"✓":(i===loadingIdx?"›":"")}</span>{s}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {stage==="dashboard" && analysis && (
+        <div className="dash">
+          <div className="dash-head">
+            <div>
+              <div className="wallet">{analysis.reported_wallet}</div>
+              <div className="meta">
+                Chain(s): {analysis.chains_analyzed.join(", ")} &nbsp;·&nbsp;
+                Mode: {analysis.mode==="demo" ? "DEMO CASE" : analysis.mode==="live" ? "LIVE ANALYSIS" : "SYNTHETIC (generated offline for this address)"}
+              </div>
+              <div className={"datasource-tag "+(analysis.data_source==="live"?"live":analysis.data_source==="cache"?"cache":"demo")}>
+                DATA SOURCE: {
+                  analysis.data_source==="live" ? `LIVE — ${analysis.adapter==="etherscan"?"Etherscan":"TRONSCAN"}` :
+                  analysis.data_source==="cache" ? "CACHED LIVE DATA" :
+                  analysis.data_source==="synthetic_offline" ? "SYNTHETIC (offline, deterministic)" :
+                  "DEMO DATASET"
+                }
+              </div>
+            </div>
+            <div className="caseid">Case ID: {analysis.case_id}<br/>Generated: {analysis.generated_at}</div>
+          </div>
+
+          <div className="stats">
+            <div className="stat"><div className="v">{analysis.summary.total_transactions_analyzed}</div><div className="l">Transactions analyzed</div></div>
+            <div className="stat"><div className="v">{analysis.summary.relevant_transactions}</div><div className="l">Relevant transactions</div></div>
+            <div className="stat"><div className="v">{analysis.summary.hops_traced}</div><div className="l">Hops traced</div></div>
+            <div className="stat"><div className="v">{analysis.summary.total_funds_traced}</div><div className="l">Total funds traced</div></div>
+          </div>
+
+          <div className="grid">
+            <div className="panel">
+              <h3>Transaction Graph</h3>
+              <TransactionGraph
+                nodes={analysis.graph.nodes}
+                edges={analysis.graph.edges}
+                selected={selected}
+                onSelectNode={(n)=>setSelected({kind:"node", data:n})}
+                onSelectEdge={(e)=>setSelected({kind:"edge", data:e})}
+              />
+            </div>
+
+            <div className="right-col">
+              <div className="panel">
+                <h3>Explainable Risk Score</h3>
+                <div className="risk-score-row">
+                  <div className="risk-score">{analysis.risk.score}<span style={{fontSize:16,color:"#8b95a7"}}>/100</span></div>
+                  <div className={"risk-level "+analysis.risk.level}>{analysis.risk.level}</div>
+                </div>
+                <div className="risk-conf">Confidence: {analysis.risk.confidence}%</div>
+                <div className="risk-disclaimer">This is an investigative PRIORITIZATION score, not proof of criminality.</div>
+                <ul className="reasons">
+                  {analysis.risk.reasons.map((r,i)=><li key={i}>{r}</li>)}
+                </ul>
+                <button className="expand-btn" style={{marginTop:8}} onClick={()=>setExpandRisk(v=>!v)}>
+                  {expandRisk ? "Hide signal breakdown ▲" : "Expand to show evidence behind the score ▼"}
+                </button>
+                {expandRisk && (
+                  <div style={{marginTop:10}}>
+                    {analysis.risk.breakdown.map(b=>(
+                      <div className="bar-row" key={b.key}>
+                        <span className="label">{b.signal} ({b.weight_pct}%)</span>
+                        <div className="bar-track"><div className="bar-fill" style={{width:(b.value*100)+"%"}}></div></div>
+                        <span className="val">{b.contribution}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {analysis.vasp_match && (
+                <div className="panel vasp-box">
+                  <h3>Likely VASP / Exchange</h3>
+                  <div className="name">{analysis.vasp_match.vasp_id}</div>
+                  <div className="cls">{analysis.vasp_match.classification} · {analysis.vasp_match.chain} · Confidence {analysis.vasp_match.confidence}%</div>
+                  <ul className="charlist">
+                    {analysis.vasp_match.evidence.map((e,i)=><li key={i}>{e}</li>)}
+                  </ul>
+                  <div className="dataset-note">{analysis.vasp_match.dataset_label}</div>
+                </div>
+              )}
+
+              {analysis.cross_chain && (
+                <div className="panel">
+                  <h3>Cross-Chain Correlation</h3>
+                  <div className="crosschain-flow">
+                    <span className="chip-chain">{analysis.cross_chain.from_chain}</span>
+                    <span>→ 🌉 →</span>
+                    <span className="chip-chain">{analysis.cross_chain.to_chain}</span>
+                  </div>
+                  <ul className="charlist">
+                    {analysis.cross_chain.evidence.map((e,i)=><li key={i}>{e}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {analysis.clusters && analysis.clusters.length>0 && (
+                <div className="panel">
+                  <h3>Wallet Clusters</h3>
+                  {analysis.clusters.map(c=>(
+                    <div className="cluster-card" key={c.cluster_id}>
+                      <div className="top">
+                        <b>{c.risk==="high"?"High-Risk Cluster":"Suspicious Cluster"} — {c.cluster_id}</b>
+                        <span className={"badge "+c.risk}>{c.risk.toUpperCase()}</span>
+                      </div>
+                      <div style={{marginTop:6}}>
+                        {c.wallet_ids.map(w=><span className="wchip" key={w}>{w}</span>)}
+                      </div>
+                      <ul className="charlist">
+                        {c.characteristics.map((ch,i)=><li key={i}>{ch}</li>)}
+                      </ul>
+                      <div style={{fontSize:10,color:"#8b95a7",marginTop:4}}>Potentially related wallets — not proof of common ownership.</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="footer-actions">
+            <div style={{fontSize:11,color:"var(--muted)"}}>Dataset: {analysis.dataset_label}</div>
+            <button className="btn" onClick={downloadReport}>GENERATE INVESTIGATION REPORT</button>
+          </div>
+        </div>
+      )}
+
+      <DetailDrawer selected={selected} onClose={()=>setSelected(null)} analysis={analysis} />
+      {toast && <div className="toast">{toast}</div>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+<script>
+  // Manually transform the JSX source with the CLASSIC runtime (React.createElement),
+  // since this Babel build's "react" preset defaults to the automatic runtime, which
+  // emits `import` statements that a plain <script> tag (no bundler) cannot resolve.
+  (function(){
+    var src = document.getElementById("app-source").textContent;
+    var compiled = Babel.transform(src, {presets: [["react", {runtime: "classic"}]]}).code;
+    var script = document.createElement("script");
+    script.text = compiled;
+    document.body.appendChild(script);
+  })();
+</script>
+</body>
+</html>
